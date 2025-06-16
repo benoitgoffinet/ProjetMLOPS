@@ -9,14 +9,3 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
-
-  streamlit:
-    build:
-      context: .
-      dockerfile: Dockerfile.streamlit
-    ports:
-      - "8501:8501"
-    depends_on:
-      - api
-    volumes:
-      - .:/app
