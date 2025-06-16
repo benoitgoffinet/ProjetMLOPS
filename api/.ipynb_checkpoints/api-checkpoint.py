@@ -71,11 +71,3 @@ def predict(data: PredictRequest):
         print(f"Erreur dans la prédiction : {e}")  # <-- Ajoute ça pour débugger
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/retrain")
-def retrain(background_tasks: BackgroundTasks):
-    def retrain_and_reload():
-        train()
-        global vectorizer, model
-        vectorizer, model = load_model()
-    background_tasks.add_task(retrain_and_reload)
-    return {"message": "Réentraînement lancé"}
