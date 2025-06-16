@@ -5,13 +5,15 @@ import joblib
 import os
 import sys
 from scipy.sparse import hstack
+from scipy.sparse import issparse
+import mlflow.pyfunc
+
+
+app = FastAPI()
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "training")))
 from train import train  # pour relancer l’entraînement
 
-app = FastAPI()
-
- 
 MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "model.pkl"))
 
 def load_model():
@@ -27,18 +29,33 @@ model, mlb, vec_title, vec_body = load_model()
 class PredictRequest(BaseModel):
     text: str
 
+
+
+@app.get("/")
+def read_root():
+    return {"message": "API is running 🚀"}
+
+
+
 @app.post("/predict")
 def predict(data: PredictRequest):
     try:
+        model, mlb, vec_title, vec_body = load_model()
         X_title = vec_title.transform([data.text])
-        X_body = vec_body.transform([""])
+        X_body = vec_body.transform([data.text])
         from scipy.sparse import hstack
         X = hstack([X_title, X_body])
-        print(X)
+         # Vérifier si X est vide (aucune valeur non nulle)
+        if issparse(X) and X.nnz == 0:
+            return {"keywords": ["aucun mot clé"]} 
         y_pred = model.predict(X)
-        print(y_pred)
         labels_list = mlb.inverse_transform(y_pred)
-        print(labels_list)
+        print("data", data.text)
+        print("X", X)
+        print("y_pred:", y_pred)
+        print("labels_list:", labels_list)
+        print("labels_list[0]:", labels_list[0])
+        print("mlb classes:", mlb.classes_)
         if not labels_list or not labels_list[0]:
             return {"keywords": ["aucun mot clé"]}
 

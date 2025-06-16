@@ -1,0 +1,15 @@
+artifact_uri: file:///app/mlruns/0/ec43aac517934bf3977c94c2198c5613/artifacts
+end_time: 1749193776664
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: ec43aac517934bf3977c94c2198c5613
+run_name: delightful-snail-651
+run_uuid: ec43aac517934bf3977c94c2198c5613
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1749193776596
+status: 4
+tags: []
+user_id: CePC

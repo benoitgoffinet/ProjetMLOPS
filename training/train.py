@@ -1,7 +1,8 @@
 
 print(f"Executing train.py from: {__file__}")
 
-
+import re
+from sklearn.linear_model import SGDClassifier
 from sklearn.model_selection import train_test_split
 import pickle
 from sklearn.base import BaseEstimator
@@ -16,43 +17,62 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.preprocessing import MultiLabelBinarizer
 from collections import Counter
+from sklearn.metrics import jaccard_score
 from sklearn.metrics import accuracy_score, f1_score, multilabel_confusion_matrix
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
 import joblib
 
+
+
+def split_tags(tag_str):
+    return tag_str.strip("<>").split("><")
+    
 # 📌 1. Chargement et vectorisation
 def prepare_data():
     data_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "data.pkl"))
 
     # Ouverture du fichier
     with open(data_path, 'rb') as f:
-        newquestion = pickle.load(f)
+        data = pickle.load(f)
 
-    tags_list = newquestion['Tags']
-    N = 50
-    tag_counts = Counter(tag for tags in tags_list for tag in tags)
-    print(most_common_tags)
+
+    titles = data['Title']
+    bodies = data['Body']
+    tags_list = [split_tags(tag) for tag in data['Tags']]
+
+    titles_train, titles_test, bodies_train, bodies_test, tags_train, tags_test = train_test_split(
+    titles, bodies, tags_list, test_size=0.2, random_state=42
+    )
+    
+         # 2. Préparation des tags (filtrage des top N)
+    tag_counts = Counter(tag for tags in tags_train for tag in tags)
+    N = 30
     most_common_tags = [tag for tag, _ in tag_counts.most_common(N)]
-    filtered_tags_list = [[tag for tag in tags if tag in most_common_tags] for tags in tags_list]
+
+    filtered_tags_train = [[tag for tag in tags if tag in most_common_tags] for tags in tags_train]
+    filtered_tags_test = [[tag for tag in tags if tag in most_common_tags] for tags in tags_test]
 
     mlb = MultiLabelBinarizer(classes=most_common_tags)
-    y = mlb.fit_transform(filtered_tags_list)
+    print(mlb)
+    
+    y_train = mlb.fit_transform(filtered_tags_train)
+    y_test = mlb.transform(filtered_tags_test)
+  
 
-    titles = newquestion['NewTitle']
-    bodies = newquestion['NewBody']
+    vectorizer_title_count = CountVectorizer(max_features=5000, ngram_range=(1,2))
+    X_title_train_count = vectorizer_title_count.fit_transform(titles_train)
+    X_title_test_count = vectorizer_title_count.transform(titles_test)
 
-    vectorizer_title = CountVectorizer(max_features=5000)
-    vectorizer_body = CountVectorizer(max_features=10000)
-    X_title = vectorizer_title.fit_transform(titles)
-    X_body = vectorizer_body.fit_transform(bodies)
+    vectorizer_body_count = CountVectorizer(max_features=10000, ngram_range=(1,2))
+    X_body_train_count = vectorizer_body_count.fit_transform(bodies_train)
+    X_body_test_count = vectorizer_body_count.transform(bodies_test)
 
-    X = hstack([X_title, X_body])
+    X_train_count = hstack([X_title_train_count, X_body_train_count])
+    X_test_count = hstack([X_title_test_count, X_body_test_count])
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    return X_train, X_test, y_train, y_test, mlb, vectorizer_title, vectorizer_body
+    return X_train_count, X_test_count, y_train, y_test, mlb, vectorizer_title_count, vectorizer_body_count
 
 # 📌 2. Tracking MLflow
 def track_training_run(model, X_train, y_train, X_test, y_test, params, experiment_name, model_name):
@@ -77,18 +97,12 @@ def track_training_run(model, X_train, y_train, X_test, y_test, params, experime
 
         acc = accuracy_score(y_test, y_pred)
         f1 = f1_score(y_test, y_pred, average="weighted")
+        jacc = jaccard_score(y_test, y_pred, average="samples")
         mlflow.log_metric("accuracy", acc)
         mlflow.log_metric("f1_score", f1)
+        mlflow.log_metric("jaccard_score", jacc)
 
-        mcm = multilabel_confusion_matrix(y_test, y_pred)
-        fig, ax = plt.subplots()
-        global_cm = np.sum(mcm, axis=0)
-        ax.imshow(global_cm, cmap='Blues')
-        plt.title("Confusion Matrix")
-        cm_path = "artifacts/confusion_matrix.png"
-        os.makedirs("artifacts", exist_ok=True)
-        plt.savefig(cm_path)
-        mlflow.log_artifact(cm_path)
+
 
         mlflow.sklearn.log_model(model, artifact_path="model")
         mlflow.register_model(f"runs:/{run_id}/model", name=model_name)
@@ -100,23 +114,28 @@ def track_training_run(model, X_train, y_train, X_test, y_test, params, experime
 def train():
     X_train, X_test, y_train, y_test, mlb, vec_title, vec_body = prepare_data()
 
-    model = OneVsRestClassifier(LogisticRegression(max_iter=1000))
+    # Modèle avec SGDClassifier dans un OneVsRest
+    model = OneVsRestClassifier(SGDClassifier(loss='log_loss', max_iter=1000, random_state=42))
+
+    # Entraînement
+    model.fit(X_train, y_train)
+
     params = {
-        "max_iter": 1000,
-        "classifier": "LogisticRegression",
-        "strategy": "OneVsRest"
+    "max_iter": 1000,
+    "classifier": "SGDClassifiermlops",
+    "strategy": "OneVsRest"
     }
 
     track_training_run(
-        model=model,
-        X_train=X_train,
-        y_train=y_train,
-        X_test=X_test,
-        y_test=y_test,
-        params=params,
-        experiment_name="MyExperiment",
-        model_name="OneVsRest_LogReg"
-    )
+    model=model,
+    X_train=X_train,
+    y_train=y_train,
+    X_test=X_test,
+    y_test=y_test,
+    params=params,
+    experiment_name="MyExperiment",
+    model_name="OneVsRest_LogRegmlops")
+
 
     # 📦 Sauvegarder le modèle et les vectorizers dans ../modele/
     model_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models"))

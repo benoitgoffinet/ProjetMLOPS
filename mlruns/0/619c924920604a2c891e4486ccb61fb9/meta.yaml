@@ -1,0 +1,15 @@
+artifact_uri: file:///app/mlruns/0/619c924920604a2c891e4486ccb61fb9/artifacts
+end_time: 1749194179704
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 619c924920604a2c891e4486ccb61fb9
+run_name: mercurial-owl-436
+run_uuid: 619c924920604a2c891e4486ccb61fb9
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1749194179656
+status: 4
+tags: []
+user_id: CePC

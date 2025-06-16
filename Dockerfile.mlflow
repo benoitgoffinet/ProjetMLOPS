@@ -1,0 +1,15 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Installer mlflow et gunicorn
+RUN pip install --no-cache-dir mlflow gunicorn
+
+# Copier les fichiers locaux (logs éventuels)
+COPY . .
+
+# Port d'écoute Heroku (sera injecté dynamiquement)
+ENV PORT=5000
+
+# Commande pour lancer mlflow UI
+CMD mlflow ui --host 0.0.0.0 --port $PORT --backend-store-uri ./mlruns
