@@ -22,8 +22,9 @@ jobs:
 
       - name: Démarrer l'API en arrière-plan
         run: |
-          uvicorn app:app --host 0.0.0.0 --port 8000 &
-          sleep 5  # attends que le serveur démarre
+          uvicorn api.api:app --host 0.0.0.0 --port 8000 > server.log 2>&1 &
+          sleep 15
+          cat server.log
 
       - name: Lancer les tests
         run: pytest tests/test_api.py
