@@ -26,5 +26,5 @@ jobs:
           sleep 15
           cat server.log
 
-      - name: Lancer les tests
-        run: pytest tests/test_api.py
+      - name: Lancer les tests (avec logs)
+        run: pytest -s tests/test_api.py
