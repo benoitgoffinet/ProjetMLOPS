@@ -10,5 +10,8 @@ COPY . /app
 # Installe les dépendances
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Lance le script principal
-CMD ["python", "main.py"]
+# Spécifie le port écouté par l'application
+EXPOSE 80
+
+# Lance l'API FastAPI avec Uvicorn sur le port 80
+CMD ["uvicorn", "api.api:app", "--host", "0.0.0.0", "--port", "80"]
