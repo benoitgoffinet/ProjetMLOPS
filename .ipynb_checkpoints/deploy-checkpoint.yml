@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Nom de l'image Docker
+IMAGE_NAME="monprojetmlops"
+
+# Port local sur lequel exposer l'app
+LOCAL_PORT=8000
+CONTAINER_PORT=80
+
+echo "🔧 Construction de l'image Docker: $IMAGE_NAME"
+docker build -t $IMAGE_NAME .
+
+echo "🚀 Lancement du conteneur sur http://localhost:$LOCAL_PORT"
+docker run -d -p $LOCAL_PORT:$CONTAINER_PORT $IMAGE_NAME
